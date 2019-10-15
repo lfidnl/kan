@@ -1,28 +1,24 @@
 module Kan
   class AbilitiesList
-    ROLES_DETECT = 'roles'.freeze
-
     def initialize(name, list)
       @name = name
       @list = list
     end
 
-    def call(*payload)
-      @name == ROLES_DETECT ? mapped_roles(payload) : ability_check(payload)
+    def call(*payload, **options)
+      applicable_abilities = fetch_applicable_abilities(payload)
+      return applicable_abilities if options[:return_abilities]
+      apply_abilities(applicable_abilities, payload)
     end
 
     private
 
-    def ability_check(payload)
-      @list
-        .select { |abilities| abilities.class.valid_role?(*payload) }
-        .any? { |abilities| abilities.ability(@name).call(*payload) }
+    def fetch_applicable_abilities(*payload)
+      @list.select { |abilities| abilities.applicable?(*payload) }
     end
 
-    def mapped_roles(payload)
-      @list.map do |abilities|
-        abilities.class.valid_role?(*payload) ? abilities.class.role_name : nil
-      end.compact
+    def apply_abilities(abilities, payload)
+      abilities.any? { |ability| ability.ability(@name).call(*payload) }
     end
   end
 end

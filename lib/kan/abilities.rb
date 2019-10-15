@@ -12,8 +12,6 @@ module Kan
 
     module ClassMethods
       RESERVED_NAME = :roles.freeze
-      DEFAULT_ROLE_NAME = :base
-      DEFAULT_ROLE_BLOCK = proc { true }
 
       def register(*abilities, &block)
         abilities.map!(&:to_sym)
@@ -40,39 +38,18 @@ module Kan
         ability_list[ability]
       end
 
-      def role(role_name, object = nil, &block)
-        @role_name = role_name
-        @role_block = object ? make_callable(object) : block
-      end
-
-      def role_name
-        @role_name || DEFAULT_ROLE_NAME
-      end
-
-      def role_block
-        @role_block || DEFAULT_ROLE_BLOCK
-      end
-
-      def valid_role?(*args)
-        role_block.call(*args)
-      end
-
       def ability_list
         @ability_list ||= {}
+      end
+
+      def applicable_checklist
+        @applicable_checklist ||= []
       end
 
       private
 
       def aliases
         @aliases ||= {}
-      end
-
-      def make_callable(object)
-        callable_object = object.is_a?(Class) ? object.new : object
-
-        return callable_object if callable_object.respond_to? :call
-
-        raise InvalidRoleObjectError.new "role object #{object} does not support #call method"
       end
     end
 
@@ -95,6 +72,10 @@ module Kan
         @after_call_callback && @after_call_callback.call(normalized_name, args)
         result
       end
+    end
+
+    def applicable?(*args)
+      self.class.applicable_checklist.all? { |checklist| checklist.call(*args) }
     end
   end
 end
